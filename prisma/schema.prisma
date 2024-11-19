@@ -1,0 +1,204 @@
+// schema.prisma
+
+generator py {
+  provider             = "prisma-client-py"
+  recursive_type_depth = 5
+  binaryTargets        = ["native"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int              @id @default(autoincrement())
+  username          String           @unique
+  password          String
+  role              Role
+  lastname          String
+  firstname         String
+  email             String?          @unique
+  profile           Profile?
+  comments          Comment[]        @relation
+  task_comments     TaskComment[]    @relation
+  sent_messages     Message[]        @relation("sent_messages")
+  received_messages Message[]        @relation("received_messages")
+  admin_groups      Group[]          @relation("admin_of_group")
+  member_groups     Group[]          @relation("member_of_group")
+  posts_viewed      Post[]           @relation("posts_viewed")
+  posts_saved       Post[]           @relation("posts_saved")
+  post_created      Post[]           @relation("posts_created")
+  notifications     Notification[]   @relation()
+  tasks             Task[]           @relation("assigned_users")
+  created_tasks     Task[]           @relation("created_tasks")
+  submitted_tasks   TaskSubmission[] @relation()
+  reacts            PostReaction[]   @relation("userReaction")
+}
+
+model Profile {
+  id      Int     @id @default(autoincrement())
+  bio     String
+  pfp     String?
+  user_id Int     @unique
+  user    User    @relation(fields: [user_id], references: [id])
+}
+
+model Post {
+  id           Int            @id @default(autoincrement())
+  reacts       PostReaction[] @relation("postReaction")
+  favorited_by User[]         @relation("posts_saved")       
+  seen_by      User[]         @relation("posts_viewed")       
+  comments     Comment[]
+  desc         String?
+  cover_img    String?
+  title        String
+  meta         Json           @default("{}")
+  attachments  String[]
+  user_id      Int
+  group_id     Int
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+  source       User           @relation(name: "posts_created", fields: [user_id], references: [id])
+  group        Group          @relation(fields: [group_id], references: [id])
+  published    Boolean        @default(false)
+}
+
+model Group {
+  id      Int       @id @default(autoincrement())
+  name    String
+  desc    String?
+  type    GroupType
+  meta    Json      @default("{}")
+  admins  User[]    @relation("admin_of_group")
+  members User[]    @relation("member_of_group")
+  posts   Post[]
+  tasks   Task[]
+}
+
+model Task {
+  assigned_users   User[]           @relation("assigned_users")
+  assigned_groups  Group[]          @relation()
+  comments         TaskComment[]
+  due_at           DateTime
+  name             String
+  desc             String?
+  attachments      String[]
+  meta             Json             @default("{}")
+  task_submissions TaskSubmission[]
+  id               Int              @id @default(autoincrement())
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
+  creatorId        Int
+  creator          User             @relation("created_tasks", fields: [creatorId], references: [id])
+}
+
+model TaskSubmission {
+  id           Int      @id @default(autoincrement())
+  desc         String?
+  attachments  String[]
+  submitted_at DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  source_id    Int
+  source       Task     @relation(fields: [source_id], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
+  userId       Int
+}
+
+model Comment {
+  id         Int       @id @default(autoincrement())
+  content    String
+  post_id    Int
+  user_id    Int
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  post       Post      @relation(fields: [post_id], references: [id])
+  user       User      @relation(fields: [user_id], references: [id])
+  parentId   Int?
+  parent     Comment?  @relation("comment_replies", fields: [parentId], references: [id])
+  replies    Comment[] @relation("comment_replies")
+}
+model TaskComment {
+  id         Int       @id @default(autoincrement())
+  content    String
+  task_id    Int
+  user_id    Int
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  task       Task      @relation(fields: [task_id], references: [id])
+  user       User      @relation(fields: [user_id], references: [id])
+  parentId   Int?
+  parent     TaskComment?  @relation("comment_replies", fields: [parentId], references: [id])
+  replies    TaskComment[] @relation("comment_replies")
+}
+
+model Message {
+  id         Int       @id @default(autoincrement())
+  date        DateTime @default(now())
+  content     String
+  receiver    User     @relation(name: "sent_messages", fields: [receiver_id], references: [id])
+  receiver_id Int      
+  user        User     @relation(name: "received_messages", fields: [user_id], references: [id])
+  user_id     Int
+}
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+  type       String
+  message    String?
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id])
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+}
+
+
+model PostReaction {
+  id        Int          @id @default(autoincrement())
+  user      User         @relation("userReaction", fields: [userId], references: [id])
+  userId    Int
+  post      Post         @relation("postReaction", fields: [postId], references: [id])
+  postId    Int
+  reaction  ReactionType
+  createdAt DateTime     @default(now())
+
+  @@unique([userId, postId, reaction])
+}
+
+enum ReactionType {
+  LIKE
+  FUNNY
+  HEART
+  ANGRY
+  SAD
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum GroupType {
+  INSTITUTION
+  ORGANIZATION
+  CLUB
+  CLASS
+  CASUAL
+}
+
+enum NotificationType {
+  MESSAGE_REPLY
+  COMMENT_REPLY
+  TASK_REPLY
+
+  NEW_POST
+  NEW_TASK
+  UPDATED_POST
+  UPDATED_TASK
+  COMPLETED_TASK
+  DEADLINE_DUE
+
+  SECURITY_ISSUE
+  ANNOUNCEMENT
+}
