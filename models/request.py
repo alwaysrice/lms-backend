@@ -2,6 +2,11 @@
 from pydantic import BaseModel
 
 
+class Pair(BaseModel):
+    key: str
+    value: object
+
+
 class LoginRequestBody(BaseModel):
     username: str
     password: str
@@ -12,6 +17,14 @@ class SignupRequestBody(BaseModel):
     password: str
     lastname: str
     firstname: str
+
+
+class TaskGradeRequestBody(BaseModel):
+    source: int
+    user: int
+    remark: str
+    grade: int
+    attachments: list
 
 
 class TaskSubmissionRequestBody(BaseModel):

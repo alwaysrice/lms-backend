@@ -31,6 +31,7 @@ model User {
   post_created      Post[]           @relation("posts_created")
   notifications     Notification[]   @relation()
   tasks             Task[]           @relation("assigned_users")
+  tasks_response    TaskResponse[]   @relation()
   created_tasks     Task[]           @relation("created_tasks")
   submitted_tasks   TaskSubmission[] @relation()
   reacts            PostReaction[]   @relation("userReaction")
@@ -79,6 +80,7 @@ model Group {
 model Task {
   assigned_users   User[]           @relation("assigned_users")
   assigned_groups  Group[]          @relation()
+  users_grade      TaskResponse[]   @relation()
   comments         TaskComment[]
   due_at           DateTime
   name             String
@@ -96,6 +98,7 @@ model Task {
 model TaskSubmission {
   id           Int      @id @default(autoincrement())
   desc         String?
+  grade        Int?
   attachments  String[]
   submitted_at DateTime @default(now())
   updated_at   DateTime @updatedAt
@@ -103,6 +106,19 @@ model TaskSubmission {
   source       Task     @relation(fields: [source_id], references: [id])
   user         User     @relation(fields: [userId], references: [id])
   userId       Int
+}
+
+model TaskResponse {
+  id           Int      @id @default(autoincrement())
+  source       Task     @relation(fields: [source_id], references: [id])
+  user         User     @relation(fields: [user_id], references: [id])
+  source_id    Int
+  user_id      Int
+  graded_at    DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  remark       String?
+  grade        Int?
+  attachments  String[]
 }
 
 model Comment {

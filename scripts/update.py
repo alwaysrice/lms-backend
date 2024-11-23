@@ -17,16 +17,12 @@ prisma = Prisma()
 async def main():
     await prisma.connect()
 
-    users = await prisma.user.find_many()
-
-    for user in users:
-        for i in range(random.randint(3, 20)):
-            await prisma.message.create(data={
-                "content": fake.text(20),
-                "receiver_id": random.choice(users).id,
-                "user_id": user.id,
-            })
-
+    submissions = await prisma.tasksubmission.find_many()
+    for submission in submissions:
+        await prisma.taskstate.create(data={
+            "user_id": submission.userId,
+            "source_id": submission.source_id,
+        })
     await prisma.disconnect()
 
 asyncio.run(main())

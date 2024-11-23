@@ -1,11 +1,12 @@
 import asyncio
+import pytz
 from pprint import pprint
 import numpy as np
 import random
 from prisma import Prisma
 from faker import Faker
 import randominfo
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from prisma.bases import BaseUser
 import bcrypt
 
@@ -22,10 +23,15 @@ def faker_text(length):
     return generated_text[:length]
 
 
+def ranchance(percent=50):
+    return random.randint(0, 99) < percent
+
+
 def faker_duedate(min=1, max=30):
     days_to_add = fake.random_int(min=min, max=max)
-    due_date = datetime.now() + timedelta(days=days_to_add)
-    return due_date
+    if ranchance():
+        return datetime.now() - timedelta(days=days_to_add)
+    return datetime.now() + timedelta(days=days_to_add)
 
 
 async def fake_users(num=1, seed=None):
@@ -44,6 +50,31 @@ async def fake_users(num=1, seed=None):
             "password": bcrypt.hashpw("zxcv".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
             "role": random.choice(["STUDENT", "TEACHER", "ADMIN"])
         })
+
+    await prisma.user.create(data={
+        "firstname": "John",
+        "lastname": "Pascal",
+        "username": "student",
+        "email": "pascaljohn@gmail.com",
+        "password": bcrypt.hashpw("zxcv".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        "role": "STUDENT"
+    })
+    await prisma.user.create(data={
+        "firstname": "Richard",
+        "lastname": "Gordon",
+        "username": "teacher",
+        "email": "gordssa@yahoo.com",
+        "password": bcrypt.hashpw("zxcv".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        "role": "TEACHER"
+    })
+    await prisma.user.create(data={
+        "firstname": "Thomas",
+        "lastname": "Dominis",
+        "username": "admin",
+        "email": "thos@gmail.com",
+        "password": bcrypt.hashpw("zxcv".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        "role": "ADMIN"
+    })
     return await prisma.user.find_many()
 
 
@@ -109,9 +140,24 @@ async def fake_groups(admins: list, members: list, seed=None):
             "creatorId": creator,
             "due_at": faker_duedate()
         })
+
     tasks = await getIds(await prisma.task.find_many())
     for y in tasks:
         assigned_to = await getIds(await prisma.user.find_many(where={"tasks": {"some": {"id": y}}}))
+        task = await prisma.task.find_unique(where={"id": y})
+        for x in assigned_to:
+            if datetime.now(timezone.utc) >= task.due_at:
+                await prisma.tasksubmission.create(data={
+                    "desc": faker_text(random.randint(100, 500)) if random.random() < 30/100 else "",
+                    "attachments": ["file-export.pdf", "proof.docx"],
+                    "source_id": y,
+                    "userId": x,
+                })
+                await prisma.taskresponse.create(data={
+                    "source_id": y,
+                    "user_id": x,
+                    "grade": random.randint(60, 99)
+                })
         for x in range(random.randint(int(len(assigned_to)/2), len(assigned_to))):
             await prisma.tasksubmission.create(data={
                 "desc": faker_text(random.randint(100, 500)) if random.random() < 30/100 else "",
@@ -169,6 +215,7 @@ async def main():
     await prisma.comment.delete_many()
     await prisma.post.delete_many()
     await prisma.tasksubmission.delete_many()
+    await prisma.taskresponse.delete_many()
     await prisma.message.delete_many()
     await prisma.taskcomment.delete_many()
     await prisma.task.delete_many()
