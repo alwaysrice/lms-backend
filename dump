@@ -1,0 +1,13 @@
+
+
+model UserSettings {
+  id       Int            @id @default(autoincrement())
+  user     User           @relation(fields: [user_id], references: [id])
+  user_id  Int            @unique
+  theme    SiteTheme?     @relation 
+}
+model SiteTheme {
+  id       Int            @id @default(autoincrement())
+  settings    UserSettings           @relation(fields: [settings_id], references: [id])
+  settings_id  Int            @unique
+}

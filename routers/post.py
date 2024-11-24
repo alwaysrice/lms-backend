@@ -51,7 +51,7 @@ async def get_resources_from_group(
     #     LEFT JOIN "User" ON "Post"."user_id" = "User"."id"
     #     LEFT JOIN "Group" ON "Post"."group_id" = "Group"."id"
     #     LEFT JOIN "Comment" ON "Comment"."post_id" = "Post"."id"
-    #     LEFT JOIN "PostReaction" ON "PostReaction"."postId" = "Post"."id"
+    #     LEFT JOIN "PostReaction" ON "PostReaction"."post_id" = "Post"."id"
     #     WHERE
     #         "Post"."group_id" = {group_id}
     #         AND "Post"."meta"::jsonb ? 'resource'
@@ -119,8 +119,8 @@ async def post_is_favorited(body: ReactRequestBody):
 async def post_has(body: ReactRequestBody):
     return await prisma.postreaction.find_first(
         where={
-            "postId": body.post,
-            "userId": body.user,
+            "post_id": body.post,
+            "user_id": body.user,
         }
     )
 
@@ -160,8 +160,8 @@ async def post_favorite(body: ReactRequestBody):
 async def post_react(body: ReactRequestBody):
     existing_react = await prisma.postreaction.find_first(
         where={
-            "postId": body.post,
-            "userId": body.user,
+            "post_id": body.post,
+            "user_id": body.user,
             "reaction": body.reaction,
         }
     )
@@ -176,8 +176,8 @@ async def post_react(body: ReactRequestBody):
     else:
         await prisma.postreaction.create(
             data={
-                "postId": body.post,
-                "userId": body.user,
+                "post_id": body.post,
+                "user_id": body.user,
                 "reaction": body.reaction,
             }
         )

@@ -17,12 +17,18 @@ prisma = Prisma()
 async def main():
     await prisma.connect()
 
-    submissions = await prisma.tasksubmission.find_many()
-    for submission in submissions:
-        await prisma.taskstate.create(data={
-            "user_id": submission.userId,
-            "source_id": submission.source_id,
-        })
+    await prisma.postreaction.delete_many()
+    await prisma.comment.delete_many()
+    await prisma.post.delete_many()
+    await prisma.tasksubmission.delete_many()
+    await prisma.taskresponse.delete_many()
+    await prisma.message.delete_many()
+    await prisma.taskcomment.delete_many()
+    await prisma.task.delete_many()
+    await prisma.notification.delete_many()
+    await prisma.profile.delete_many()
+    await prisma.group.delete_many()
+    await prisma.user.delete_many()
     await prisma.disconnect()
 
 asyncio.run(main())

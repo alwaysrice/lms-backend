@@ -1,4 +1,5 @@
 import asyncio
+import json
 import pytz
 from pprint import pprint
 import numpy as np
@@ -51,13 +52,19 @@ async def fake_users(num=1, seed=None):
             "role": random.choice(["STUDENT", "TEACHER", "ADMIN"])
         })
 
-    await prisma.user.create(data={
+    student = await prisma.user.create(data={
         "firstname": "John",
         "lastname": "Pascal",
         "username": "student",
         "email": "pascaljohn@gmail.com",
         "password": bcrypt.hashpw("zxcv".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         "role": "STUDENT"
+    })
+    await prisma.profile.create(data={
+        "user_id": student.id,
+    })
+    await prisma.usersettings.create(data={
+        "user_id": student.id,
     })
     await prisma.user.create(data={
         "firstname": "Richard",
@@ -75,7 +82,13 @@ async def fake_users(num=1, seed=None):
         "password": bcrypt.hashpw("zxcv".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         "role": "ADMIN"
     })
-    return await prisma.user.find_many()
+
+    users = await prisma.user.find_many()
+    # for i in range(random.randint(int(len(users)/2), len(users))):
+    #     await prisma.message.create(data={
+    #         ""
+    #     })
+    return users
 
 
 async def getIds(query):
@@ -94,11 +107,14 @@ async def fake_groups(admins: list, members: list, seed=None):
         "Physical Education",
     ]
 
-    others = [
-        ["Supreme Student(SS)", "ORGANIZATION"],
+    institution = [
         ["Prime News Club", "CLUB"],
         ["Uni Highschool Department", "INSTITUTION"],
-        ["Uni Accounting Department", "INSTITUTION"]
+        ["Uni Accounting Department", "INSTITUTION"],
+        ["Gray University", "INSTITUTION"],
+    ]
+    others = [
+        ["Supreme Student(SS)", "ORGANIZATION"],
     ]
 
     for x in range(len(others)):
@@ -106,6 +122,17 @@ async def fake_groups(admins: list, members: list, seed=None):
             "name": others[x][0],
             "desc": fake.text(),
             "type": others[x][1],
+            "year_start": datetime.now(),
+            "admins": {"connect": [{"id": admins.pop()}]},
+            "members": {"connect": [{"id": id} for id in random.sample(members, random.randint(int(len(members)/2), len(members)))]}
+        })
+    for x in range(len(institution)):
+        await prisma.group.create(data={
+            "name": institution[x][0],
+            "desc": fake.text(),
+            "type": institution[x][1],
+            "year_start": datetime.now(),
+            "meta": json.dumps({"branch": "Candelaria"}),
             "admins": {"connect": [{"id": admins.pop()}]},
             "members": {"connect": [{"id": id} for id in random.sample(members, random.randint(int(len(members)/2), len(members)))]}
         })
@@ -114,6 +141,8 @@ async def fake_groups(admins: list, members: list, seed=None):
             "name": classes[x],
             "desc": fake.text(),
             "type": "CLASS",
+            "year_start": datetime.now(),
+            "year_end": datetime.now() + timedelta(days=365),
             "admins": {"connect": [{"id": admins.pop()}]},
             "members": {"connect": [{"id": id} for id in random.sample(members, random.randint(int(len(members)/2), len(members)))]}
         })
@@ -124,7 +153,7 @@ async def fake_groups(admins: list, members: list, seed=None):
         all_group_members = []
 
         for z in random_groups:
-            all_group_members.extend(await getIds(await prisma.user.find_many(where={"admin_groups": {"some": {"id": z}}})))
+            all_group_members.extend(await getIds(await prisma.user.find_many(where={"member_groups": {"some": {"id": z}}})))
 
         creator = await prisma.user.find_first(where={"admin_groups": {"some": {"id": random.choice(random_groups)}}})
         creator = creator.id
@@ -137,7 +166,7 @@ async def fake_groups(admins: list, members: list, seed=None):
             "assigned_groups": {
                 "connect": [{"id": id} for id in random_groups]
             },
-            "creatorId": creator,
+            "creator_id": creator,
             "due_at": faker_duedate()
         })
 
@@ -151,7 +180,7 @@ async def fake_groups(admins: list, members: list, seed=None):
                     "desc": faker_text(random.randint(100, 500)) if random.random() < 30/100 else "",
                     "attachments": ["file-export.pdf", "proof.docx"],
                     "source_id": y,
-                    "userId": x,
+                    "user_id": x,
                 })
                 await prisma.taskresponse.create(data={
                     "source_id": y,
@@ -162,7 +191,7 @@ async def fake_groups(admins: list, members: list, seed=None):
             await prisma.tasksubmission.create(data={
                 "desc": faker_text(random.randint(100, 500)) if random.random() < 30/100 else "",
                 "source_id": y,
-                "userId": assigned_to.pop(),
+                "user_id": assigned_to.pop(),
             })
 
     for x in range(random.randint(3, 30)):
@@ -202,8 +231,8 @@ async def fake_posts(users: list, groups: list, num=100, seed=None):
             await prisma.postreaction.create(
                 data={
                     "reaction": random.choice(["LIKE", "FUNNY", "SAD", "ANGRY"]),
-                    "userId": users_copy.pop(),
-                    "postId": post
+                    "user_id": users_copy.pop(),
+                    "post_id": post
                 }
             )
 
@@ -221,6 +250,10 @@ async def main():
     await prisma.task.delete_many()
     await prisma.notification.delete_many()
     await prisma.profile.delete_many()
+    await prisma.usersettings.delete_many()
+    await prisma.sitetheme.delete_many()
+    await prisma.posttag.delete_many()
+    await prisma.profilebadge.delete_many()
     await prisma.group.delete_many()
     await prisma.user.delete_many()
 
