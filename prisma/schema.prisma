@@ -18,8 +18,12 @@ model User {
   role              Role
   lastname          String
   firstname         String
+  middlename        String?
+  suffix            String?
   email             String?          @unique
   profile           Profile?
+  settings          UserSettings?
+  meta              Json             @default("{}")
   comments          Comment[]        @relation
   task_comments     TaskComment[]    @relation
   sent_messages     Message[]        @relation("sent_messages")
@@ -29,35 +33,77 @@ model User {
   posts_viewed      Post[]           @relation("posts_viewed")
   posts_saved       Post[]           @relation("posts_saved")
   post_created      Post[]           @relation("posts_created")
+  post_drafted      Post[]           @relation("posts_drafted")
   notifications     Notification[]   @relation()
   tasks             Task[]           @relation("assigned_users")
   tasks_response    TaskResponse[]   @relation()
   created_tasks     Task[]           @relation("created_tasks")
-  submitted_tasks   TaskSubmission[] @relation()
-  reacts            PostReaction[]   @relation("userReaction")
+  submitted_tasks   TaskSubmission[] @relation("submitted_tasks")
+  submission_drafts TaskSubmission[] @relation("submission_drafts")
+  reacts            PostReaction[]   @relation("user_reactions")
+}
+
+model UserSettings {
+  id         Int          @id @default(autoincrement())
+  user       User         @relation(fields: [user_id], references: [id])
+  user_id    Int          @unique
+  theme      SiteTheme?   @relation
+  media_view PostViewType @default(List)
+}
+
+model SiteTheme {
+  id          Int          @id @default(autoincrement())
+  settings    UserSettings @relation(fields: [settings_id], references: [id])
+  settings_id Int          @unique
 }
 
 model Profile {
+  id       Int            @id @default(autoincrement())
+  user     User           @relation(fields: [user_id], references: [id])
+  user_id  Int            @unique
+  bio      String?
+  sex      SexType?
+  birthday DateTime?
+  mobile   String?
+  country  String?
+  religion String?
+  badges   ProfileBadge[]
+  links    String[]
+  address  String?
+  pfp      String?
+  cover    String?
+}
+
+model ProfileBadge {
+  id         Int     @id @default(autoincrement())
+  profile    Profile @relation(fields: [profile_id], references: [id])
+  profile_id Int     @unique
+  image      String
+}
+
+model PostTag {
   id      Int     @id @default(autoincrement())
-  bio     String
-  pfp     String?
-  user_id Int     @unique
-  user    User    @relation(fields: [user_id], references: [id])
+  post    Post    @relation(fields: [post_id], references: [id])
+  post_id Int
+  name    String
+  color   String?
 }
 
 model Post {
   id           Int            @id @default(autoincrement())
-  reacts       PostReaction[] @relation("postReaction")
-  favorited_by User[]         @relation("posts_saved")       
-  seen_by      User[]         @relation("posts_viewed")       
+  user_id      Int
+  group_id     Int
+  reacts       PostReaction[] @relation("post_reacts")
+  favorited_by User[]         @relation("posts_saved")
+  seen_by      User[]         @relation("posts_viewed")
+  drafted_by   User[]         @relation("posts_drafted")
   comments     Comment[]
   desc         String?
   cover_img    String?
   title        String
+  tags         PostTag[]
   meta         Json           @default("{}")
   attachments  String[]
-  user_id      Int
-  group_id     Int
   created_at   DateTime       @default(now())
   updated_at   DateTime       @updatedAt
   source       User           @relation(name: "posts_created", fields: [user_id], references: [id])
@@ -66,59 +112,66 @@ model Post {
 }
 
 model Group {
-  id      Int       @id @default(autoincrement())
-  name    String
-  desc    String?
-  type    GroupType
-  meta    Json      @default("{}")
-  admins  User[]    @relation("admin_of_group")
-  members User[]    @relation("member_of_group")
-  posts   Post[]
-  tasks   Task[]
+  id         Int       @id @default(autoincrement())
+  name       String
+  desc       String?
+  type       GroupType
+  year_start DateTime
+  year_end   DateTime?
+  meta       Json      @default("{}")
+  admins     User[]    @relation("admin_of_group")
+  members    User[]    @relation("member_of_group")
+  posts      Post[]
+  tasks      Task[]
 }
 
 model Task {
+  id               Int              @id @default(autoincrement())
+  creator_id       Int
+  creator          User             @relation("created_tasks", fields: [creator_id], references: [id])
   assigned_users   User[]           @relation("assigned_users")
   assigned_groups  Group[]          @relation()
   users_grade      TaskResponse[]   @relation()
   comments         TaskComment[]
   due_at           DateTime
   name             String
+  type             String           @default("Task")
   desc             String?
   attachments      String[]
   meta             Json             @default("{}")
   task_submissions TaskSubmission[]
-  id               Int              @id @default(autoincrement())
   created_at       DateTime         @default(now())
   updated_at       DateTime         @updatedAt
-  creatorId        Int
-  creator          User             @relation("created_tasks", fields: [creatorId], references: [id])
 }
 
 model TaskSubmission {
-  id           Int      @id @default(autoincrement())
-  desc         String?
-  grade        Int?
-  attachments  String[]
-  submitted_at DateTime @default(now())
-  updated_at   DateTime @updatedAt
-  source_id    Int
-  source       Task     @relation(fields: [source_id], references: [id])
-  user         User     @relation(fields: [userId], references: [id])
-  userId       Int
+  id            Int      @id @default(autoincrement())
+  user_id       Int
+  user_draft_id Int?
+  source_id     Int
+  user          User     @relation("submitted_tasks", fields: [user_id], references: [id])
+  user_draft    User?     @relation("submission_drafts", fields: [user_draft_id], references: [id])
+  source        Task     @relation(fields: [source_id], references: [id])
+  desc          String?
+  grade         Int?
+  attachments   String[]
+  submitted_at  DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  published     Boolean  @default(false)
 }
 
 model TaskResponse {
-  id           Int      @id @default(autoincrement())
-  source       Task     @relation(fields: [source_id], references: [id])
-  user         User     @relation(fields: [user_id], references: [id])
-  source_id    Int
-  user_id      Int
-  graded_at    DateTime @default(now())
-  updated_at   DateTime @updatedAt
-  remark       String?
-  grade        Int?
-  attachments  String[]
+  id          Int      @id @default(autoincrement())
+  source      Task     @relation(fields: [source_id], references: [id])
+  user        User     @relation(fields: [user_id], references: [id])
+  allow_peek  Boolean  @default(true)
+  source_id   Int
+  user_id     Int
+  graded_at   DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  remark      String?
+  grade       Int?
+  attachments String[]
 }
 
 model Comment {
@@ -130,30 +183,31 @@ model Comment {
   updated_at DateTime  @updatedAt
   post       Post      @relation(fields: [post_id], references: [id])
   user       User      @relation(fields: [user_id], references: [id])
-  parentId   Int?
-  parent     Comment?  @relation("comment_replies", fields: [parentId], references: [id])
+  parent_id  Int?
+  parent     Comment?  @relation("comment_replies", fields: [parent_id], references: [id])
   replies    Comment[] @relation("comment_replies")
 }
+
 model TaskComment {
-  id         Int       @id @default(autoincrement())
+  id         Int           @id @default(autoincrement())
   content    String
   task_id    Int
   user_id    Int
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  task       Task      @relation(fields: [task_id], references: [id])
-  user       User      @relation(fields: [user_id], references: [id])
-  parentId   Int?
-  parent     TaskComment?  @relation("comment_replies", fields: [parentId], references: [id])
+  created_at DateTime      @default(now())
+  updated_at DateTime      @updatedAt
+  task       Task          @relation(fields: [task_id], references: [id])
+  user       User          @relation(fields: [user_id], references: [id])
+  parent_id  Int?
+  parent     TaskComment?  @relation("comment_replies", fields: [parent_id], references: [id])
   replies    TaskComment[] @relation("comment_replies")
 }
 
 model Message {
-  id         Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   date        DateTime @default(now())
   content     String
   receiver    User     @relation(name: "sent_messages", fields: [receiver_id], references: [id])
-  receiver_id Int      
+  receiver_id Int
   user        User     @relation(name: "received_messages", fields: [user_id], references: [id])
   user_id     Int
 }
@@ -165,20 +219,30 @@ model Notification {
   user_id    Int
   user       User     @relation(fields: [user_id], references: [id])
   is_read    Boolean  @default(false)
+  meta       Json     @default("{}")
   created_at DateTime @default(now())
 }
 
-
 model PostReaction {
-  id        Int          @id @default(autoincrement())
-  user      User         @relation("userReaction", fields: [userId], references: [id])
-  userId    Int
-  post      Post         @relation("postReaction", fields: [postId], references: [id])
-  postId    Int
-  reaction  ReactionType
-  createdAt DateTime     @default(now())
+  id         Int          @id @default(autoincrement())
+  user       User         @relation("user_reactions", fields: [user_id], references: [id])
+  post       Post         @relation("post_reacts", fields: [post_id], references: [id])
+  post_id    Int
+  user_id    Int
+  reaction   ReactionType
+  created_at DateTime     @default(now())
 
-  @@unique([userId, postId, reaction])
+  @@unique([user_id, post_id, reaction])
+}
+
+enum PostViewType {
+  Grid
+  List
+}
+
+enum SexType {
+  MALE
+  FEMALE
 }
 
 enum ReactionType {

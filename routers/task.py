@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 from lib.db import prisma
 from models.request import TaskSubmissionRequestBody, TaskGradeRequestBody
-
+from datetime import datetime
 
 app = APIRouter(
     tags=["task"]
@@ -34,6 +34,98 @@ async def get_tasks_responses_from_group(
                     }
                 }
             },
+            "assigned_users": True,
+            "assigned_groups": True,
+            "task_submissions": True,
+            "creator": True,
+            "comments": {
+                "include": {
+                    "user": True,
+                    "parent": True,
+                    "replies": True,
+                }
+            }
+        }
+    )
+    return item
+
+
+@app.get("/get/tasks-category/group/{group_id}")
+async def get_user_tasks_from_group(
+        group_id: int,
+        user_id: int,
+        category: str,
+        assigned_users: bool = True,
+        assigned_groups: bool = False,
+        submissions: bool = False):
+    filter = {}
+
+    if category == "completed":
+        filter = {
+            "assigned_users": {
+                "some": {
+                    "submitted_tasks": {
+                        "some": {
+                            "user_id": user_id,
+                        }
+                    }
+                }
+            }
+        }
+    elif category == "missed":
+        filter = {
+            "due_at": {
+                "lt": datetime.now()
+            },
+            "assigned_users": {
+                "some": {
+                    "submitted_tasks": {
+                        "none": {
+                            "user_id": user_id,
+                        }
+                    }
+                }
+            }
+        }
+    elif category == "due":
+        filter = {
+            "due_at": {
+                "gt": datetime.now()
+            },
+            "assigned_users": {
+                "some": {
+                    "submitted_tasks": {
+                        "none": {
+                            "user_id": user_id,
+                        }
+                    }
+                }
+            }
+        }
+    elif category == "graded":
+        filter = {
+            "assigned_users": {
+                "none": {
+                    "tasks_response": {
+                        "some": {
+                            "user_id": user_id,
+                        }
+                    }
+                }
+            }
+        }
+
+    item = await prisma.task.find_many(
+        where={
+            # "assigned_groups": {
+            #     "some": {
+            #         "id": group_id,
+            #     }
+            # },
+            **filter,
+        },
+        include={
+            "users_grade": True,
             "assigned_users": True,
             "assigned_groups": True,
             "task_submissions": True,
@@ -89,7 +181,9 @@ async def get_task(
         assigned_groups: bool = False,
         submissions: bool = False):
     item = await prisma.task.find_unique(
-        where={"id": id},
+        where={
+            "id": id,
+        },
         include={
             "users_grade": True,
             "assigned_users": assigned_users,
@@ -117,7 +211,7 @@ async def from_task_response(task: int, user: int):
 @app.get("/from/task-submission/{task}/{user}")
 async def from_task_submission(task: int, user: int):
     item = await prisma.tasksubmission.find_first(
-        where={"userId": user, "source_id": task})
+        where={"user_id": user, "source_id": task})
     return item
 
 
@@ -125,7 +219,7 @@ async def from_task_submission(task: int, user: int):
 async def from_task_other_submission(task: int, user: int):
     item = await prisma.tasksubmission.find_many(
         where={
-            "userId": {
+            "user_id": {
                 "not": user
             },
             "source_id": {
@@ -157,7 +251,7 @@ async def submit_task(body: TaskSubmissionRequestBody):
             "desc": body.remark,
             "attachments": body.attachments,
             "source_id": body.source,
-            "userId": body.user,
+            "user_id": body.user,
         }
     )
     return item
