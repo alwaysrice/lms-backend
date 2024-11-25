@@ -62,32 +62,22 @@ async def get_user_tasks_from_group(
 
     if category == "completed":
         filter = {
-            "assigned_users": {
-                "user_id": user_id,
+            "task_submissions": {
                 "some": {
-                    "submitted_tasks": {
-                        "some": {
-                            "user_id": user_id,
-                        }
-                    }
+                    "user_id": user_id
                 }
-            }
+            },
         }
     elif category == "missed":
         filter = {
             "due_at": {
                 "lt": datetime.now()
             },
-            "assigned_users": {
-                "id": user_id,
-                "some": {
-                    "submitted_tasks": {
-                        "none": {
-                            "user_id": user_id,
-                        }
-                    }
+            "task_submissions": {
+                "none": {
+                    "user_id": user_id
                 }
-            }
+            },
         }
     elif category == "due":
         filter = {
@@ -96,35 +86,34 @@ async def get_user_tasks_from_group(
             },
             "assigned_users": {
                 "some": {
-                    "id": user_id,
-                    "submitted_tasks": {
-                        "none": {
-                            "user_id": user_id,
-                        }
-                    }
+                    "id": user_id
                 }
             }
         }
     elif category == "graded":
         filter = {
-            "assigned_users": {
-                "none": {
-                    "tasks_response": {
-                        "some": {
-                            "user_id": user_id,
-                        }
+            "users_grade": {
+                "some": {
+                    "user": {
+                        "id": user_id
                     }
                 }
             }
         }
 
+    group_filter = {
+        "assigned_groups": {
+            "some": {
+                "id": group_id,
+            }
+        },
+    }
+    if group_id == -99:
+        group_filter = {}
+
     item = await prisma.task.find_many(
         where={
-            # "assigned_groups": {
-            #     "some": {
-            #         "id": group_id,
-            #     }
-            # },
+            **group_filter,
             **filter,
         },
         include={

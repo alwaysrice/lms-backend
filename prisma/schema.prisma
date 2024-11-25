@@ -26,8 +26,9 @@ model User {
   meta              Json             @default("{}")
   comments          Comment[]        @relation
   task_comments     TaskComment[]    @relation
-  sent_messages     Message[]        @relation("sent_messages")
-  received_messages Message[]        @relation("received_messages")
+  sent_messages     UserMessage[]    @relation("sent_messages")
+  message_rooms     MessageRoom[]
+  received_messages UserMessage[]    @relation("received_messages")
   admin_groups      Group[]          @relation("admin_of_group")
   member_groups     Group[]          @relation("member_of_group")
   posts_viewed      Post[]           @relation("posts_viewed")
@@ -150,7 +151,7 @@ model TaskSubmission {
   user_draft_id Int?
   source_id     Int
   user          User     @relation("submitted_tasks", fields: [user_id], references: [id])
-  user_draft    User?     @relation("submission_drafts", fields: [user_draft_id], references: [id])
+  user_draft    User?    @relation("submission_drafts", fields: [user_draft_id], references: [id])
   source        Task     @relation(fields: [source_id], references: [id])
   desc          String?
   grade         Int?
@@ -202,14 +203,26 @@ model TaskComment {
   replies    TaskComment[] @relation("comment_replies")
 }
 
-model Message {
-  id          Int      @id @default(autoincrement())
-  date        DateTime @default(now())
-  content     String
-  receiver    User     @relation(name: "sent_messages", fields: [receiver_id], references: [id])
-  receiver_id Int
-  user        User     @relation(name: "received_messages", fields: [user_id], references: [id])
+// Shared between participants
+model MessageRoom {
+  id           Int           @id @default(autoincrement())
+  participants User[]
+  messages     UserMessage[]
+}
+
+model UserMessage {
+  id          Int         @id @default(autoincrement())
+  receiver    User?       @relation(name: "sent_messages", fields: [receiver_id], references: [id])
+  receiver_id Int?
+  user        User        @relation(name: "received_messages", fields: [user_id], references: [id])
   user_id     Int
+  room        MessageRoom @relation(fields: [room_id], references: [id])
+  room_id     Int
+  content     String
+  removed     Boolean     @default(false)
+  meta        Json        @default("{}")
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
 }
 
 model Notification {
