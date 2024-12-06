@@ -50,6 +50,27 @@ async def get_tasks_responses_from_group(
     return item
 
 
+@app.get("/is/task/missed")
+async def check_if_missed(
+        user_id: int,
+        task_id: int):
+
+    item = await prisma.task.find_first(
+        where={
+            "id": task_id,
+            "due_at": {
+                "lt": datetime.now()
+            },
+            "task_submissions": {
+                "none": {
+                    "user_id": user_id
+                }
+            },
+        }
+    )
+    return item is not None
+
+
 @app.get("/get/tasks-category/group/{group_id}")
 async def get_user_tasks_from_group(
         group_id: int,
@@ -217,6 +238,9 @@ async def from_task_other_submission(task: int, user: int):
             "source_id": {
                 "not": task
             }
+        },
+        include={
+            "user": True,
         }
     )
     return item

@@ -1,5 +1,6 @@
 
 from pydantic import BaseModel
+from typing import Dict
 
 
 class Pair(BaseModel):
@@ -53,3 +54,7 @@ class CreatePostRequestBody(BaseModel):
     title: str
     cover: str
     attachments: list[str]
+
+
+class DictModel(BaseModel):
+    data: dict
