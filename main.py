@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from lib.db import prisma
 from routers import auth, task, comment, group, user, post, upload
@@ -30,11 +31,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@app.get("/get/community")
+
+@ app.get("/get/community")
 async def get_community():
-    items = await prisma.post.find_many(
+    items=await prisma.post.find_many(
         include={
             "source": True,
             "group": True,

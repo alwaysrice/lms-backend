@@ -1,4 +1,5 @@
 
+import json
 import asyncio
 from pprint import pprint
 import numpy as np
@@ -9,6 +10,7 @@ import randominfo
 from datetime import timedelta, datetime
 from prisma.bases import BaseUser
 import bcrypt
+import os
 
 fake = Faker()
 prisma = Prisma()
@@ -17,18 +19,20 @@ prisma = Prisma()
 async def main():
     await prisma.connect()
 
-    await prisma.postreaction.delete_many()
-    await prisma.comment.delete_many()
-    await prisma.post.delete_many()
-    await prisma.tasksubmission.delete_many()
-    await prisma.taskresponse.delete_many()
-    await prisma.message.delete_many()
-    await prisma.taskcomment.delete_many()
-    await prisma.task.delete_many()
-    await prisma.notification.delete_many()
-    await prisma.profile.delete_many()
-    await prisma.group.delete_many()
-    await prisma.user.delete_many()
+    admin = await prisma.user.find_first(where={"username": "admin"})
+    school = await prisma.group.find_first(where={"name": "Gray University"})
+    for i in range(random.randint(3, 10)):
+        await prisma.post.create(data={
+            "desc": fake.text(),
+            "title": fake.text(random.randint(5, 30)),
+            "cover_img": "https://loremflickr.com/200/200?random=1",
+            "user_id": admin.id,
+            "group_id": school.id,
+            "meta": json.dumps({
+                "type": "staff", 
+            }),
+        })
+
     await prisma.disconnect()
 
 asyncio.run(main())

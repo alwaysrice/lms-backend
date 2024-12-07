@@ -29,3 +29,16 @@ async def get_group(
             "members": members,
         })
     return item
+
+
+@app.get("/get/school/")
+async def get_school():
+    item = await prisma.group.find_first(
+        where={"name": "Gray University"},
+        include={
+            "posts": True,
+            "tasks": True,
+            "admins": True,
+            "members": True,
+        })
+    return item

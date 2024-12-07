@@ -7,21 +7,27 @@ app = APIRouter(
 )
 
 
+@app.get("/get/users/")
+async def get_users(role: str):
+    items = await prisma.user.find_many(where={"role": role})
+    return items
+
+
 @app.get("/get/teachers")
 async def get_teachers():
-    teachers = await prisma.users.find_many(where={"role": "TEACHER"})
+    teachers = await prisma.user.find_many(where={"role": "TEACHER"})
     return teachers
 
 
 @app.get("/get/admins")
 async def get_admins():
-    admins = await prisma.users.find_many(where={"role": "ADMIN"})
+    admins = await prisma.user.find_many(where={"role": "ADMIN"})
     return admins
 
 
 @app.get("/get/students")
 async def get_students():
-    students = await prisma.users.find_many(where={"role": "STUDENT"})
+    students = await prisma.user.find_many(where={"role": "STUDENT"})
     return students
 
 
@@ -44,8 +50,22 @@ async def udpate_profile(user_id: int, body: DictModel):
 
 @app.get("/get/user/{user_id}/")
 async def get_user(user_id, groups: bool = False, tasks: bool = False):
-    user = await prisma.user.update(
+    user = await prisma.user.find_first(
         where={"id": user_id},
+        include={
+            "member_groups": groups,
+            "admin_groups": groups,
+            "tasks": tasks,
+            "notifications": True,
+            "profile": True,
+        })
+    return user
+
+
+@app.get("/get/user/by-username/{username}/")
+async def get_user_by_username(username, groups: bool = False, tasks: bool = False):
+    user = await prisma.user.find_first(
+        where={"username": username},
         include={
             "member_groups": groups,
             "admin_groups": groups,

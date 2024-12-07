@@ -6,6 +6,7 @@ from prisma import Prisma
 from faker import Faker
 from datetime import timedelta, datetime, timezone
 import bcrypt
+import os
 
 fake = Faker()
 prisma = Prisma()
@@ -81,7 +82,28 @@ async def fake_users(num=1, seed=None):
         "email": "thos@gmail.com",
         "password": bcrypt.hashpw("zxcv".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         "role": "ADMIN"
+    })        
+    dean = await prisma.user.create(data={
+        "firstname": "Burger",
+        "lastname": "King",
+        "middlename": "Angels",
+        "suffix": "II",
+        "username": "dean",
+        "email": "dean@uni.com",
+        "password": bcrypt.hashpw("zxcv".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        "role": "ADMIN",
+        "pfp": "static/images/dean.jpg"
     })
+    for i in os.listdir("static/images/teachers"): 
+        await prisma.user.create(data={
+            "firstname": fake.first_name(),
+            "lastname": fake.last_name(),
+            "username": fake.user_name(),
+            "email": fake.email(),
+            "password": bcrypt.hashpw("zxcv".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+            "role": "TEACHER",
+            "pfp": "static/images/teachers/" + i
+        })
 # user in filter(lambda user: user.id != student, users)]
 
     users = await prisma.user.find_many()
