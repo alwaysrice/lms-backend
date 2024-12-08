@@ -59,6 +59,12 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             "tasks": True,
             "notifications": True,
             "profile": True,
+            "message_rooms": {
+                "include": {
+                    "participants": True,
+                    "messages": True,
+                }
+            }
         })
     if user is None:
         raise credentials_exception
