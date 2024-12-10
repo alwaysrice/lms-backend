@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from lib.db import prisma
-from routers import auth, task, comment, group, user, post, upload
+from routers import auth, task, comment, group, user, post, upload, message
 from decouple import config
 
 
@@ -24,6 +24,7 @@ app.include_router(user.app)
 app.include_router(group.app)
 app.include_router(comment.app)
 app.include_router(upload.app)
+app.include_router(message.app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
