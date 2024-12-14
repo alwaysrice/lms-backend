@@ -183,6 +183,15 @@ async def fake_groups(admins: list, members: list, seed=None):
             "members": {"connect": [{"id": user.id} for user in random.sample(members, random.randint(int(len(members)/2), len(members)))]}
         })
     classes_data = []
+    await prisma.group.create(
+        data={
+            "id": -1,
+            "name": "Public",
+            "desc": "",
+            "type": "CASUAL",
+            "year_start": datetime.now(),
+        }
+    )
     for x in range(len(classes)):
         item = await prisma.group.create(
             data={

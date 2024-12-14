@@ -1,12 +1,29 @@
 
 
-from fastapi import APIRouter
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from lib.db import prisma
+from lib.websocket import ConnectionManager
 
 
 app = APIRouter(
     tags=["comment"]
 )
+
+
+group_active = ConnectionManager()
+
+
+@app.websocket("/group-active")
+async def post_feed_socket(websocket: WebSocket):
+    await group_active.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            message = data
+            print("Received data")
+            await group_active.broadcast_json(message)
+    except WebSocketDisconnect:
+        group_active.disconnect(websocket)
 
 
 @app.get("/get/groups/{group_type}")

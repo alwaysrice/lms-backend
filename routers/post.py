@@ -1,7 +1,8 @@
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import json
 from lib.db import prisma
+from routers.group import group_active
 from models.request import ReactRequestBody, CreatePostRequestBody, Pair
 
 
@@ -9,6 +10,7 @@ app = APIRouter(
     tags=["post"]
 )
 
+socket = group_active
 
 @app.get("/get/posts/group/{group_id}/")
 async def get_posts_from_group(
@@ -87,9 +89,12 @@ async def set_meta(post_id: int, body: Pair):
     )
 
 
+# def serialize_json(row):
+#     for key, value in row.dict().items
+
 @app.post("/create/post")
 async def create_post(body: CreatePostRequestBody):
-    return await prisma.post.create(
+    item = await prisma.post.create(
         data={
             "user_id": body.source,
             "group_id": body.group,
@@ -97,8 +102,26 @@ async def create_post(body: CreatePostRequestBody):
             "desc": body.desc,
             "cover_img": body.cover,
             "attachments": body.attachments,
+        },
+        include={
+            "source": True,
+            "group": True,
+            "reacts": True,
+            "comments": {
+                "include": {
+                    "user": True,
+                    "parent": True,
+                    "replies": True,
+                }
+            }
         }
     )
+    item.meta["type"] = "post"
+    item = item.json()
+    # item["created_at"] = item["created_at"].isoformat()
+    # item["updated_at"] = item["updated_at"].isoformat()
+    await socket.broadcast_json(item)
+    return item
 
 
 @app.post("/post/is/favorited")
