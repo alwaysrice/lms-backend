@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 import json
 from lib.db import prisma
 from models.request import ReactRequestBody, CreatePostRequestBody, Pair
@@ -103,7 +103,7 @@ async def create_post(body: CreatePostRequestBody):
 
 @app.post("/post/is/favorited")
 async def post_is_favorited(body: ReactRequestBody):
-    return await prisma.post.find_first(
+    item = await prisma.post.find_first(
         where={
             "id": body.post,
             "favorited_by": {
@@ -113,16 +113,24 @@ async def post_is_favorited(body: ReactRequestBody):
             }
         }
     )
+    if not item:
+        return False
+    return item
 
 
 @app.post("/post/has/reaction")
 async def post_has(body: ReactRequestBody):
-    return await prisma.postreaction.find_first(
+    item = await prisma.postreaction.find_first(
         where={
             "post_id": body.post,
             "user_id": body.user,
         }
     )
+    if not item:
+        print("NOT LIKED")
+        return False
+    print("LIKED " + item.reaction)
+    return item
 
 
 @app.post("/post/favorite")
@@ -162,17 +170,18 @@ async def post_react(body: ReactRequestBody):
         where={
             "post_id": body.post,
             "user_id": body.user,
-            "reaction": body.reaction,
         }
     )
     if existing_react:
         if existing_react.reaction == body.reaction:
             await prisma.postreaction.delete(where={"id": existing_react.id})
-
-        await prisma.postreaction.update(
-            where={"id": existing_react.id},
-            data={"reaction": body.reaction}
-        )
+            print("deleted Reaction: ")
+        else:
+            await prisma.postreaction.update(
+                where={"id": existing_react.id},
+                data={"reaction": body.reaction}
+            )
+            print("updated to: " + body.reaction)
     else:
         await prisma.postreaction.create(
             data={
@@ -181,6 +190,7 @@ async def post_react(body: ReactRequestBody):
                 "reaction": body.reaction,
             }
         )
+        print("created Reaction: " + body.reaction)
     return existing_react
 
 

@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from lib.db import prisma
 from models.request import TaskSubmissionRequestBody, TaskGradeRequestBody
 from datetime import datetime
@@ -225,6 +225,8 @@ async def from_task_response(task: int, user: int):
 async def from_task_submission(task: int, user: int):
     item = await prisma.tasksubmission.find_first(
         where={"user_id": user, "source_id": task})
+    if not item:
+        raise HTTPException(status_code=404)
     return item
 
 
