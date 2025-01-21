@@ -118,8 +118,6 @@ async def create_post(body: CreatePostRequestBody):
     )
     item.meta["type"] = "post"
     item = item.json()
-    # item["created_at"] = item["created_at"].isoformat()
-    # item["updated_at"] = item["updated_at"].isoformat()
     await socket.broadcast_json(item)
     return item
 
