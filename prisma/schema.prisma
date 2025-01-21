@@ -113,15 +113,15 @@ model Post {
 }
 
 model Group {
-  id         Int       @id @default(autoincrement())
+  id         Int          @id @default(autoincrement())
   name       String
   desc       String?
   type       GroupType
   year_start DateTime
   year_end   DateTime?
-  meta       Json      @default("{}")
-  admins     User[]    @relation("admin_of_group")
-  members    User[]    @relation("member_of_group")
+  meta       Json         @default("{}")
+  admins     User[]       @relation("admin_of_group")
+  members    User[]       @relation("member_of_group")
   posts      Post[]
   tasks      Task[]
   chats      MessageRoom?
@@ -209,8 +209,8 @@ model MessageRoom {
   id           Int           @id @default(autoincrement())
   participants User[]
   messages     UserMessage[]
-  group        Group        @relation(fields: [group_id], references: [id])
-  group_id     Int          @unique
+  group        Group         @relation(fields: [group_id], references: [id])
+  group_id     Int           @unique
 }
 
 model UserMessage {
@@ -229,14 +229,21 @@ model UserMessage {
 }
 
 model Notification {
-  id         Int      @id @default(autoincrement())
-  type       String
-  message    String?
+  id         Int                  @id @default(autoincrement())
+  message    String
+  priority   NotificationPriority @default(NORMAL)
   user_id    Int
-  user       User     @relation(fields: [user_id], references: [id])
-  is_read    Boolean  @default(false)
-  meta       Json     @default("{}")
-  created_at DateTime @default(now())
+  user       User                 @relation(fields: [user_id], references: [id])
+  is_read    Boolean              @default(false)
+  meta       Json                 @default("{}")
+  created_at DateTime             @default(now())
+}
+
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
 }
 
 model PostReaction {
